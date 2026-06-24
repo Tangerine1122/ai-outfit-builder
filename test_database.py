@@ -76,6 +76,28 @@ def fetch_all_items():
         )
     return items
 
+def get_wardrobe_for_stylist() -> list:
+    """
+    Fetch the real wardrobe from Supabase and reshape it into exactly the
+    format the Gemini stylist logic expects: a list of dicts with
+    id, category, color, style, tags (no image_url/created_at needed —
+    Gemini doesn't need those to make a recommendation).
+
+    Used by main.py's /stylist/recommend route in place of MOCK_WARDROBE.
+    """
+    response = supabase.table("clothes").select("*").execute()
+    items = response.data
+
+    return [
+        {
+            "id": item["id"],
+            "category": item["category"],
+            "color": item["color"],
+            "style": item["style"],
+            "tags": item["tags"],
+        }
+        for item in items
+    ]
 
 if __name__ == "__main__":
     insert_mock_items()
