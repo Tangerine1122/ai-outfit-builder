@@ -72,8 +72,9 @@ def upload_local_file(file_path: str):
 def upload_clothing_image(file_bytes: bytes) -> str:
     """
     Upload a real clothing photo to Cloudinary (separate folder from test
-    uploads) and return just the secure URL — this is what the FastAPI
-    upload route will store in Supabase's image_url column.
+    uploads), automatically remove the background, and return just the
+    secure URL -- this is what the FastAPI upload route will store in
+    Supabase's image_url column.
 
     Cloudinary can accept raw bytes directly, which is exactly what we get
     from a FastAPI UploadFile after reading it.
@@ -82,6 +83,7 @@ def upload_clothing_image(file_bytes: bytes) -> str:
         file_bytes,
         folder="ai-outfit-builder/clothes",  # separate from the test/ folder
         tags=["wardrobe-item"],
+        background_removal="cloudinary_ai",  # removes the photo's background
     )
     return result["secure_url"]
 

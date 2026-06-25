@@ -10,12 +10,13 @@ server runs and routes respond, before wiring in real logic.
 """
 
 from fastapi import FastAPI, HTTPException, UploadFile, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 
 # Reuse the logic we already built and tested — don't rewrite it here.
 from test_stylist import get_outfit_recommendation, validate_outfit
-from test_database import get_wardrobe_for_stylist, insert_clothing_item
+from test_database import get_wardrobe_for_stylist, insert_clothing_item, fetch_all_items
 from test_cloudinary import upload_clothing_image
 
 # ---------------------------------------------------------------------------
@@ -23,7 +24,12 @@ from test_cloudinary import upload_clothing_image
 # Everything we build (routes, middleware, etc.) attaches to this one object.
 # ---------------------------------------------------------------------------
 app = FastAPI(title="AI Outfit Builder API")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------------------------------------------------------------------------
 # Pydantic model = the "shape" of data we expect the frontend to send us.
@@ -52,6 +58,16 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
+# ---------------------------------------------------------------------------
+# Returns every item in the closet, full data (including image_url),
+# for the React frontend's closet grid view. This is different from
+# get_wardrobe_for_stylist(), which strips out image_url since Gemini
+# doesn't need it -- the frontend needs exactly the opposite: it needs
+# the image_url so it can actually display the photo.
+# ---------------------------------------------------------------------------
+@app.get("/clothes")
+def list_clothes():
+    return fetch_all_items()
 
 # ---------------------------------------------------------------------------
 # The first REAL route. Note it's @app.post, not @app.get — POST is used
