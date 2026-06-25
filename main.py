@@ -9,12 +9,14 @@ Starting point: the smallest possible FastAPI app, just to prove the
 server runs and routes respond, before wiring in real logic.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, Form
 from pydantic import BaseModel
+from typing import List
 
 # Reuse the logic we already built and tested — don't rewrite it here.
 from test_stylist import get_outfit_recommendation, validate_outfit
-from test_database import get_wardrobe_for_stylist
+from test_database import get_wardrobe_for_stylist, insert_clothing_item
+from test_cloudinary import upload_clothing_image
 
 # ---------------------------------------------------------------------------
 # Create the FastAPI "app" object.
@@ -81,3 +83,61 @@ def recommend_outfit(request: RecommendRequest):
         "reason": result["reason"],
         "validation_problems": problems,  # empty list = all good
     }
+
+
+# ---------------------------------------------------------------------------
+# The upload route. Unlike /stylist/recommend, this does NOT receive a
+# clean JSON body — file uploads use a different request format called
+# "multipart/form-data", which is why this route's parameters look
+# different: each piece of data is its own separate parameter, rather
+# than one Pydantic model.
+#
+# - UploadFile: tells FastAPI "expect an actual file here"
+# - Form(...): tells FastAPI "expect a plain text field alongside the file"
+#   (this is needed because file uploads can't be sent as plain JSON)
+# ---------------------------------------------------------------------------
+@app.post("/clothes/upload")
+async def upload_clothing_item(
+    file: UploadFile,
+    category: str = Form(...),
+    color: str = Form(...),
+    style: str = Form(...),
+    tags: List[str] = Form(default=[]),
+):
+    # Basic validation: catch an obviously wrong category before we waste
+    # an upload to Cloudinary on something that will fail at the database
+    # step anyway (the table's CHECK constraint would reject it).
+    valid_categories = {"top", "bottom", "shoes", "dress", "outerwear", "accessory"}
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid category '{category}'. Must be one of: {sorted(valid_categories)}",
+        )
+
+    # Read the uploaded file's raw bytes into memory.
+    # "await" is needed here because reading an uploaded file is an async
+    # operation in FastAPI — it doesn't block the server while waiting.
+    file_bytes = await file.read()
+
+    # Step 1: upload the photo to Cloudinary, get back a real CDN URL.
+    try:
+        image_url = upload_clothing_image(file_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Image upload failed: {e}")
+
+    # Step 2: save the metadata + the new image URL into Supabase.
+    try:
+        saved_item = insert_clothing_item(
+            image_url=image_url,
+            category=category,
+            color=color,
+            style=style,
+            tags=tags,
+        )
+    except Exception as e:
+        # Note: at this point the image is already on Cloudinary even
+        # though the database save failed. We're not handling that
+        # cleanup yet — just surfacing the error clearly for now.
+        raise HTTPException(status_code=500, detail=f"Saving to database failed: {e}")
+
+    return saved_item

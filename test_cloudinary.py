@@ -43,13 +43,13 @@ TEST_IMAGE_SOURCE = "https://res.cloudinary.com/demo/image/upload/sample.jpg"
 
 
 def upload_test_image():
-    print("📤 Uploading test image to Cloudinary...")
+    print("Uploading test image to Cloudinary...")
     result = cloudinary.uploader.upload(
         TEST_IMAGE_SOURCE,
         folder="ai-outfit-builder/test",  # keeps test uploads organized/separate
         tags=["test-upload"],
     )
-    print("✅ Upload successful!\n")
+    print("Upload successful!\n")
     print(f"  Public ID:    {result['public_id']}")
     print(f"  Secure URL:   {result['secure_url']}")
     print(f"  Format:       {result['format']}")
@@ -59,21 +59,36 @@ def upload_test_image():
 
 def upload_local_file(file_path: str):
     """Optional helper: upload an actual file from your computer instead of a URL."""
-    print(f"📤 Uploading local file: {file_path}...")
+    print(f"Uploading local file: {file_path}...")
     result = cloudinary.uploader.upload(
         file_path,
         folder="ai-outfit-builder/test",
         tags=["test-upload"],
     )
-    print("✅ Upload successful!")
+    print("Upload successful!")
     print(f"  Secure URL: {result['secure_url']}")
     return result
 
+def upload_clothing_image(file_bytes: bytes) -> str:
+    """
+    Upload a real clothing photo to Cloudinary (separate folder from test
+    uploads) and return just the secure URL — this is what the FastAPI
+    upload route will store in Supabase's image_url column.
+
+    Cloudinary can accept raw bytes directly, which is exactly what we get
+    from a FastAPI UploadFile after reading it.
+    """
+    result = cloudinary.uploader.upload(
+        file_bytes,
+        folder="ai-outfit-builder/clothes",  # separate from the test/ folder
+        tags=["wardrobe-item"],
+    )
+    return result["secure_url"]
 
 if __name__ == "__main__":
     result = upload_test_image()
 
-    print("\n👉 Open this URL in your browser to confirm the image loads:")
+    print("\nOpen this URL in your browser to confirm the image loads:")
     print(f"   {result['secure_url']}")
 
     # Uncomment and edit this line to also test uploading a real local image:

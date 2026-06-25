@@ -57,18 +57,18 @@ MOCK_ITEMS_TO_INSERT = [
 
 def insert_mock_items():
     """Insert the mock items into the clothes table."""
-    print("📤 Inserting mock items into Supabase...")
+    print("Inserting mock items into Supabase...")
     response = supabase.table("clothes").insert(MOCK_ITEMS_TO_INSERT).execute()
-    print(f"✅ Inserted {len(response.data)} item(s).")
+    print(f"Inserted {len(response.data)} item(s).")
     return response.data
 
 
 def fetch_all_items():
     """Read back everything currently in the clothes table."""
-    print("\n📥 Fetching all items from Supabase...")
+    print("\nFetching all items from Supabase...")
     response = supabase.table("clothes").select("*").execute()
     items = response.data
-    print(f"✅ Found {len(items)} item(s) in the database:\n")
+    print(f"Found {len(items)} item(s) in the database:\n")
     for item in items:
         print(
             f"  - id={item['id']} | [{item['category']}] {item['color']} "
@@ -76,11 +76,12 @@ def fetch_all_items():
         )
     return items
 
+
 def get_wardrobe_for_stylist() -> list:
     """
     Fetch the real wardrobe from Supabase and reshape it into exactly the
     format the Gemini stylist logic expects: a list of dicts with
-    id, category, color, style, tags (no image_url/created_at needed —
+    id, category, color, style, tags (no image_url/created_at needed --
     Gemini doesn't need those to make a recommendation).
 
     Used by main.py's /stylist/recommend route in place of MOCK_WARDROBE.
@@ -98,6 +99,24 @@ def get_wardrobe_for_stylist() -> list:
         }
         for item in items
     ]
+
+
+def insert_clothing_item(image_url: str, category: str, color: str, style: str, tags: list) -> dict:
+    """
+    Insert a single new clothing item into Supabase and return the saved
+    row (including its new auto-generated id) -- used by main.py's
+    upload route, after the photo has already been uploaded to Cloudinary.
+    """
+    new_item = {
+        "image_url": image_url,
+        "category": category,
+        "color": color,
+        "style": style,
+        "tags": tags,
+    }
+    response = supabase.table("clothes").insert(new_item).execute()
+    return response.data[0]  # .insert() always returns a list; we only inserted one row
+
 
 if __name__ == "__main__":
     insert_mock_items()
