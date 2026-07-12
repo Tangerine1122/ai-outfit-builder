@@ -24,9 +24,13 @@ from test_cloudinary import upload_clothing_image
 # Everything we build (routes, middleware, etc.) attaches to this one object.
 # ---------------------------------------------------------------------------
 app = FastAPI(title="AI Outfit Builder API")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",          # local development
+        "https://dees-wardrobe.vercel.app",  # deployed frontend
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -58,6 +62,7 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
+
 # ---------------------------------------------------------------------------
 # Returns every item in the closet, full data (including image_url),
 # for the React frontend's closet grid view. This is different from
@@ -68,6 +73,7 @@ def health_check():
 @app.get("/clothes")
 def list_clothes():
     return fetch_all_items()
+
 
 # ---------------------------------------------------------------------------
 # The first REAL route. Note it's @app.post, not @app.get — POST is used
