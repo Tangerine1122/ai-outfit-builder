@@ -81,8 +81,10 @@ def upload_clothing_image(file_bytes: bytes) -> str:
     from a FastAPI UploadFile after reading it.
 
     Transformation notes:
-    - width/height 800 with crop=limit: shrinks large phone photos to fit
-      within 800x800 without ever upscaling smaller images
+    - width/height 800x1000 with crop=fill, gravity=auto: Cloudinary
+      automatically detects the main subject (the clothing item) and crops
+      tightly around it, removing empty space above/below regardless of
+      how the photo was taken
     - fetch_format=auto: serves WebP to browsers that support it, falls back
       to PNG/JPG otherwise -- fixes the PNG-served-as-JPG Safari iOS issue
     - quality=auto:good: Cloudinary picks optimal compression, dramatically
@@ -96,8 +98,9 @@ def upload_clothing_image(file_bytes: bytes) -> str:
         transformation=[
             {
                 "width": 800,
-                "height": 800,
-                "crop": "limit",
+                "height": 1000,
+                "crop": "fill",
+                "gravity": "auto",
                 "fetch_format": "auto",
                 "quality": "auto:good",
             }
