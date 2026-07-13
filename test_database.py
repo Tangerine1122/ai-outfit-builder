@@ -118,6 +118,21 @@ def insert_clothing_item(image_url: str, category: str, color: str, style: str, 
     return response.data[0]  # .insert() always returns a list; we only inserted one row
 
 
+def delete_clothing_item(item_id: int) -> dict:
+    """
+    Delete a single clothing item from Supabase by its id.
+    Returns the deleted row so the caller can use its image_url
+    to also delete from Cloudinary.
+    """
+    # Fetch the item first so we have its image_url before deleting
+    response = supabase.table("clothes").select("*").eq("id", item_id).execute()
+    if not response.data:
+        return None
+    item = response.data[0]
+    supabase.table("clothes").delete().eq("id", item_id).execute()
+    return item
+
+
 if __name__ == "__main__":
     insert_mock_items()
     fetch_all_items()
