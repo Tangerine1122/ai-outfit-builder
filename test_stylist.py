@@ -45,6 +45,7 @@ MOCK_WARDROBE = [
     {"id": 10, "category": "top", "color": "Striped linen shirt", "style": "Casual", "tags": ["summer", "linen"]},
     {"id": 11, "category": "bottom", "color": "Khaki shorts", "style": "Casual", "tags": ["summer", "comfy"]},
     {"id": 12, "category": "shoes", "color": "Brown sandals", "style": "Casual", "tags": ["summer"]},
+    {"id": 13, "category": "one-piece", "color": "Black swimsuit", "style": "Beach", "tags": ["beach", "summer", "swim"]},
 ]
 
 # ---------------------------------------------------------------------------
@@ -77,9 +78,12 @@ SYSTEM_INSTRUCTION = """You are a wardrobe stylist AI. You will be given:
 
 RULES (must follow strictly):
 - You may ONLY use item_id values that exist in the provided wardrobe array. NEVER invent an id.
-- An outfit MUST be physically complete: either (top + bottom + shoes) OR (dress + shoes).
-  You may add outerwear/accessories on top of that minimum, but never suggest an incomplete outfit
-  (e.g. just a top and an accessory, with no bottom/dress or shoes).
+- An outfit MUST be physically complete. Valid complete outfit combinations are:
+  (top + bottom + shoes) OR (dress + shoes) OR (one-piece + shoes).
+  You may add outerwear or accessories on top of any minimum combo, but never suggest
+  an incomplete outfit (e.g. just a top and an accessory, with no bottom/dress/one-piece or shoes).
+- A one-piece is a swimsuit or bodysuit appropriate for the beach or pool -- treat it the same
+  as a dress when it comes to outfit completeness (it replaces top + bottom).
 - Pick items whose category, color, style, and tags best match the user's request and the
   general vibe implied (formality, weather, occasion).
 - Respond with JSON ONLY, matching the required schema exactly. No conversational text,
@@ -124,11 +128,12 @@ def validate_outfit(result: dict, wardrobe: list) -> list:
     categories_used = {wardrobe_by_id[i]["category"] for i in outfit_ids if i in wardrobe_by_id}
     has_top_bottom_shoes = {"top", "bottom", "shoes"}.issubset(categories_used)
     has_dress_shoes = {"dress", "shoes"}.issubset(categories_used)
+    has_onepiece_shoes = {"one-piece", "shoes"}.issubset(categories_used)
 
-    if not (has_top_bottom_shoes or has_dress_shoes):
+    if not (has_top_bottom_shoes or has_dress_shoes or has_onepiece_shoes):
         problems.append(
             f"Incomplete outfit — categories used were {categories_used}, "
-            f"need (top+bottom+shoes) or (dress+shoes)."
+            f"need (top+bottom+shoes), (dress+shoes), or (one-piece+shoes)."
         )
 
     return problems
@@ -137,14 +142,14 @@ def validate_outfit(result: dict, wardrobe: list) -> list:
 def print_outfit(result: dict, wardrobe: list):
     """Pretty-print the recommended outfit with real item details."""
     wardrobe_by_id = {item["id"]: item for item in wardrobe}
-    print("\n👗 Recommended Outfit:")
+    print("\nRecommended Outfit:")
     for entry in result.get("outfit", []):
         item = wardrobe_by_id.get(entry["item_id"])
         if item:
             print(f"  - [{item['category']}] {item['color']} ({item['style']})")
         else:
-            print(f"  - ⚠️ Unknown item_id {entry['item_id']}")
-    print(f"\n💬 Reason: {result.get('reason')}\n")
+            print(f"  - Unknown item_id {entry['item_id']}")
+    print(f"\nReason: {result.get('reason')}\n")
 
 
 # ---------------------------------------------------------------------------
@@ -154,24 +159,25 @@ TEST_PROMPTS = [
     "What should I wear to a coffee date?",
     "I have a casual summer day out with friends, what should I wear?",
     "What should I wear to a formal work dinner?",
+    "What should I wear to the beach?",
 ]
 
 
 if __name__ == "__main__":
     for prompt in TEST_PROMPTS:
         print("=" * 70)
-        print(f"🧠 Prompt: {prompt}")
+        print(f"Prompt: {prompt}")
         try:
             result = get_outfit_recommendation(prompt, MOCK_WARDROBE)
             print_outfit(result, MOCK_WARDROBE)
 
             problems = validate_outfit(result, MOCK_WARDROBE)
             if problems:
-                print("🚨 VALIDATION ISSUES:")
+                print("VALIDATION ISSUES:")
                 for p in problems:
                     print(f"   - {p}")
             else:
-                print("✅ Outfit passed validation (no hallucinations, complete outfit).")
+                print("Outfit passed validation (no hallucinations, complete outfit).")
 
         except Exception as e:
-            print(f"❌ Error during request: {e}")
+            print(f"Error during request: {e}")

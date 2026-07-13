@@ -129,7 +129,7 @@ async def upload_clothing_item(
     # Basic validation: catch an obviously wrong category before we waste
     # an upload to Cloudinary on something that will fail at the database
     # step anyway (the table's CHECK constraint would reject it).
-    valid_categories = {"top", "bottom", "shoes", "dress", "outerwear", "accessory"}
+    valid_categories = {"top", "bottom", "shoes", "dress", "outerwear", "accessory", "one-piece"}
     if category not in valid_categories:
         raise HTTPException(
             status_code=400,
